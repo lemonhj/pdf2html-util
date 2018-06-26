@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.beigebigdata.pdf2htmlutil.mapper.TxtBltBasTxtMapper">
+    <resultMap id="BaseResultMap" type="com.beigebigdata.pdf2htmlutil.entity.TxtBltBasTxt" >
+        <id column="id" property="id" jdbcType="DOUBLE" />
+        <result column="orig_id" property="orig_id" jdbcType="DOUBLE" />
+        <result column="upd_time" property="upd_time" javaType="Date"/>
+        <result column="cont_html" property="cont_html" jdbcType="CLOB" javaType = "java.lang.String" />
+    </resultMap>
+
+    <update id="updateHtmlContent" parameterType="java.lang.Object"  >
+        UPDATE TXT_BLT_BAS_TXT
+        SET UPD_TIME = SYSDATE,CONT_HTML = #{cont_html}
+        WHERE
+	        ORIG_ID = #{orig_id}
+    </update>
+
+
+
+</mapper>

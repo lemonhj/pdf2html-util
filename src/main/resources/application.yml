@@ -1,0 +1,43 @@
+spring:
+  jpa:
+    database: oracle
+  datasource:
+      driver-class-name: oracle.jdbc.driver.OracleDriver
+      url: jdbc:oracle:thin:@151.0.40.172:1521:bigdatadb
+      username: bigdata_admin
+      password: bigdata2018
+mybatis:
+  mapperLocations: classpath*:/mapper/*Mapper.xml
+
+#配置转换策略 （1为提取成文件、0为不提取）
+convertSetting:
+  #是否提取图片
+  imageExtract: 1
+  #是否提取css
+  cssExtract: 0
+  #是否提取js
+  jsExtract: 0
+  #是否提取字体
+  fontExtract: 1
+  #最大任务数
+  maxTaskCount: 5
+  #平台类型（0：linux|mac 1：windows）
+  platform: 0
+
+cronExpression: 0 0/5 * * * ?
+
+temp:
+  pdf:
+    dir: /Users/maple/Desktop/scan/temp/
+html:
+  dir: /Users/maple/Desktop/scan/temp/out/
+lastUpdateTime:
+  file:
+    name: lastUpdateTime.properties
+
+logging:
+  pattern:
+    console: "%d - %msg%n"
+  file: /Users/maple/Desktop/scan/pdf/sell.log
+  level:
+    com.beigebigdata.pdf2htmlutil: info

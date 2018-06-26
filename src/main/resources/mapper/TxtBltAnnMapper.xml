@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+        <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.beigebigdata.pdf2htmlutil.mapper.TxtBltAnnMapper">
+    <resultMap id="BaseResultMap" type="com.beigebigdata.pdf2htmlutil.entity.TxtBltAnn" >
+        <id column="id" property="id" jdbcType="DOUBLE" />
+        <result column="orig_id" property="orig_id" jdbcType="DOUBLE" />
+        <result column="ann_fmt" property="ann_fmt" jdbcType="VARCHAR" />
+        <result column="upd_time" property="upd_time" javaType="Date"/>
+        <result column="ann_cont" property="ann_cont" jdbcType="BLOB" />
+    </resultMap>
+
+    <select id="getPdfData" resultMap="BaseResultMap"  >
+        SELECT
+            ID,
+            orig_id,
+            ann_fmt,
+            upd_time,
+            ann_cont
+        FROM
+            TXT_BLT_ANN
+        WHERE
+            ann_fmt = 'PDF'
+            AND ANN_CONT IS NOT NULL
+        ORDER BY upd_time DESC
+    </select>
+
+    <select id="getPdfDataByUpdateTime" parameterType="java.util.Date" resultMap="BaseResultMap"  >
+        SELECT
+            ID,
+            orig_id,
+            ann_fmt,
+            upd_time,
+            ann_cont
+        FROM
+            TXT_BLT_ANN
+        WHERE
+            ann_fmt = 'PDF'
+            AND ANN_CONT IS NOT NULL
+            AND upd_time > #{lastUpdateTime}
+        ORDER BY upd_time DESC
+    </select>
+
+
+</mapper>
