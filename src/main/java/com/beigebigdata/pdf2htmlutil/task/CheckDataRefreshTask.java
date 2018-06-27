@@ -3,17 +3,13 @@ package com.beigebigdata.pdf2htmlutil.task;
 import com.beigebigdata.pdf2htmlutil.entity.TxtBltAnn;
 import com.beigebigdata.pdf2htmlutil.service.CheckService;
 import com.beigebigdata.pdf2htmlutil.service.UpdateService;
-import com.beigebigdata.pdf2htmlutil.utils.CmdExec;
 import com.beigebigdata.pdf2htmlutil.utils.PropertiesUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.scheduling.annotation.Async;
-import org.springframework.scheduling.annotation.EnableAsync;
-import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.boot.ApplicationArguments;
+import org.springframework.boot.ApplicationRunner;
 import org.springframework.stereotype.Component;
-
-import java.io.*;
 import java.text.DateFormat;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
@@ -30,11 +26,15 @@ import java.util.concurrent.TimeUnit;
  */
 @Slf4j
 @Component
-//@EnableAsync
-public class CheckDataRefreshTask {
+public class CheckDataRefreshTask implements ApplicationRunner {
+
+    private Map<String,String> properties = new HashMap<>();
 
     @Value("${temp.pdf.dir}")
     private String pdfTempPath;
+
+    @Value("${cyclePeriod}")
+    private int cyclePeriod;
 
     @Value("${html.dir}")
     private String htmlPath;
@@ -60,21 +60,8 @@ public class CheckDataRefreshTask {
     @Value("${convertSetting.platform}")
     private int platform;
 
-
-    public static void main(String[] args) {
-
-        CheckDataRefreshTask task = new CheckDataRefreshTask();
-
-        while (true){
-            try {
-                Thread.sleep(30*1000);
-                task.checkDataRefresh();
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            }
-        }
-
-    }
+    @Autowired
+    private UpdateService updateService;
 
     /**
      * 当前任务数
@@ -84,59 +71,38 @@ public class CheckDataRefreshTask {
     @Autowired
     private CheckService checkService;
 
-    @Autowired
-    private UpdateService updateService;
+    private ThreadPoolExecutor threadPoolExecutor;
 
-    //@Scheduled(cron="${cronExpression}")
-    //@Async
-    public  void checkDataRefresh()  {
+    public  void checkDataRefresh(){
 
-        ThreadPoolExecutor threadPoolExecutor = new ThreadPoolExecutor(10, 10, 30, TimeUnit.SECONDS,new LinkedBlockingQueue<Runnable>(),
-                new ThreadPoolExecutor.CallerRunsPolicy());
 
-        synchronized (currentTaskCount){
-            if(currentTaskCount >= maxTaskCount ) return;
-            currentTaskCount++;
-            log.info("当前正在执行的总任务数为："+currentTaskCount);
+        if (threadPoolExecutor == null){
+            threadPoolExecutor = new ThreadPoolExecutor(maxTaskCount, maxTaskCount, 30, TimeUnit.SECONDS,new LinkedBlockingQueue<Runnable>(),
+                    new ThreadPoolExecutor.CallerRunsPolicy());
         }
 
-        DateFormat bf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
-        String lastUpdateTimeStr = PropertiesUtil.getProperty(lastUpdateTimeFile,"lastUpdateTime");
-
         try {
+            properties.put("pdfTempPath",pdfTempPath);
+            properties.put("htmlPath",htmlPath);
+            properties.put("lastUpdateTimeFile",lastUpdateTimeFile);
+            properties.put("imageExtract",imageExtract+"");
+            properties.put("cssExtract",cssExtract+"");
+            properties.put("jsExtract",jsExtract+"");
+            properties.put("fontExtract",fontExtract+"");
+            properties.put("maxTaskCount",maxTaskCount+"");
+            properties.put("platform",platform+"");
 
             //从数据库中获取需要更新的pdf数据
             List<TxtBltAnn> txtBltAnns = fetchPdfDate();
 
-//            for (TxtBltAnn txtBltAnn : txtBltAnns){
-//                threadPoolExecutor.execute(new ConvertTask(txtBltAnn));
-//            }
-
-
-
-            //转存临时pdf文件
-            List<String> pdfPaths = saveTempPdfFile(txtBltAnns);
-
-            log.info("待转换的PDF文件有：" + pdfPaths.size() + "个。");
-            log.debug("待转换的PDF文件：" + pdfPaths);
-
-            List<String> htmlPaths = excuteTransition(pdfPaths);
-
-            Map<String,String> htmlContentMap = readHtmlContent(htmlPaths);
-
-            //更新数据库Html字段
-            updateHtmlContent(htmlContentMap);
-            currentTaskCount--;
-        }catch (Exception e){
-            currentTaskCount--;
-            if (lastUpdateTimeStr != null){
-                PropertiesUtil.writeProperties(lastUpdateTimeFile,"lastUpdateTime",lastUpdateTimeStr);
-            }else{
-                PropertiesUtil.removeProperty(lastUpdateTimeFile,"lastUpdateTime");
+            for (TxtBltAnn txtBltAnn : txtBltAnns){
+                threadPoolExecutor.execute(new ConvertTask(txtBltAnn,properties,updateService));
             }
+
+        }catch (ParseException e){
             e.printStackTrace();
             log.error(e.getMessage());
-            log.info("发生异常，将最后更新时间回退！");
+            log.info("发生异常，解析系统记录的最后更新时间出错！");
         }
     }
 
@@ -171,117 +137,16 @@ public class CheckDataRefreshTask {
         return txtBltAnns;
     }
 
-    /**
-     * 将db中的pdf转存到本地
-     * @param txtBltAnns
-     * @return
-     */
-    private List<String> saveTempPdfFile(List<TxtBltAnn> txtBltAnns) throws IOException {
+    @Override
+    public void run(ApplicationArguments args){
 
-        List<String> pdfPaths = new ArrayList<>();
-        for (TxtBltAnn txtBltAnn : txtBltAnns) {
-            byte bb[] = txtBltAnn.getAnn_cont();
-            File file = new File(pdfTempPath + txtBltAnn.getOrig_id() );
-            if (file.exists()) file.delete();
-            file.mkdirs();
-
-            StringBuffer pdfNameBuffer = new StringBuffer();
-            pdfNameBuffer.append(pdfTempPath).append(txtBltAnn.getOrig_id()).append("/").append(txtBltAnn.getOrig_id()).append(".pdf");
-            String pdfNameStr = pdfNameBuffer.toString();
-
-            FileOutputStream out = new FileOutputStream(new File(pdfNameStr));
-            out.write(bb);
-            out.close();
-            pdfPaths.add(pdfNameStr);
-            log.info("存储pdf临时文件：" + pdfNameStr);
+        while (true){
+            try {
+                checkDataRefresh();
+                Thread.sleep(cyclePeriod * 1000);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
         }
-        return pdfPaths;
-    }
-
-    /**
-     * 更新html内容到db
-     * @param htmlContentMap
-     */
-    private void updateHtmlContent(Map<String,String> htmlContentMap) {
-        for(Map.Entry<String, String> entry : htmlContentMap.entrySet()){
-            long orig_id = Long.parseLong(entry.getKey());
-            String cont_html = entry.getValue();
-            updateService.updateHtmlContent(orig_id,cont_html);
-            log.info(orig_id + " 更新成功！");
-        }
-    }
-
-    /**
-     * 从文件中读取html内容
-     * @param htmlPaths
-     */
-    private Map<String,String> readHtmlContent(List<String> htmlPaths) throws IOException {
-
-        Map<String,String> htmlContentMap = new HashMap<>();
-
-        for (String htmlPath : htmlPaths){
-            String htmlContent = readToString(htmlPath);
-            int index = htmlPath.lastIndexOf("/");
-            String pdfname = htmlPath.substring(index+1,htmlPath.length()-5);
-            htmlContentMap.put(pdfname,htmlContent);
-        }
-        return htmlContentMap;
-    }
-
-    public String readToString(String fileName) throws IOException {
-        String encoding = "UTF-8";
-        File file = new File(fileName);
-        Long filelength = file.length();
-        byte[] filecontent = new byte[filelength.intValue()];
-        FileInputStream in = new FileInputStream(file);
-        in.read(filecontent);
-        in.close();
-
-        return new String(filecontent, encoding);
-    }
-
-    /**
-     * 执行pdf转html
-     * @param pdfPaths
-     */
-    private List<String> excuteTransition(List<String> pdfPaths) {
-        int count = pdfPaths.size();
-        List<String> htmlPaths = new ArrayList<>();
-        for (String pdfPath : pdfPaths){
-            int index = pdfPath.lastIndexOf("/");
-            String pdfname = pdfPath.substring(index+1,pdfPath.length()-4);
-            log.info("pdfname : " + pdfname);
-            File file = new File(htmlPath+pdfname);
-            if (file.exists()){
-                file.delete();
-            }
-            file.mkdirs();
-
-            StringBuffer cmdStr = new StringBuffer("pdf2htmlEX --dest-dir ").append(htmlPath).append(pdfname);
-            if (platform == 0){
-                cmdStr.append("/");
-            }
-            cmdStr.append(" --hdpi 72 --vdpi 72 ");
-            if (imageExtract == 1){
-                cmdStr.append("--embed-image 0 ");
-            }
-            if (cssExtract == 1){
-                cmdStr.append("--embed-css 0 ");
-            }
-            if (jsExtract == 1){
-                cmdStr.append("--embed-javascript 0 ");
-            }
-            if (fontExtract == 1){
-                cmdStr.append("--embed-font 0 ");
-            }
-            cmdStr.append(pdfPath);
-
-            CmdExec.executeLinuxCmd(cmdStr.toString());
-            log.info(pdfPath + "转换完成。剩余：" + --count);
-            StringBuffer stringBuffer = new StringBuffer();
-            stringBuffer.append(htmlPath).append(pdfname).append("/").append(pdfname).append(".html");
-            htmlPaths.add(stringBuffer.toString());
-        }
-        return htmlPaths;
     }
 }

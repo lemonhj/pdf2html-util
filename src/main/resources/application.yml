@@ -3,7 +3,7 @@ spring:
     database: oracle
   datasource:
       driver-class-name: oracle.jdbc.driver.OracleDriver
-      url: jdbc:oracle:thin:@151.0.40.172:1521:bigdatadb
+      url: jdbc:oracle:thin:@151.0.40.172:1521:bigdatadb   #151.0.40.172
       username: bigdata_admin
       password: bigdata2018
 mybatis:
@@ -24,7 +24,8 @@ convertSetting:
   #平台类型（0：linux|mac 1：windows）
   platform: 0
 
-cronExpression: 0 0/5 * * * ?
+#循环周期（单位：秒）
+cyclePeriod: 300
 
 temp:
   pdf:
@@ -37,7 +38,7 @@ lastUpdateTime:
 
 logging:
   pattern:
-    console: "%d - %msg%n"
+    console: "%d -%5p - %t - %msg%n"
   file: /Users/maple/Desktop/scan/pdf/sell.log
   level:
     com.beigebigdata.pdf2htmlutil: info
