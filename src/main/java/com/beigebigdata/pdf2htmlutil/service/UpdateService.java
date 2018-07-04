@@ -1,6 +1,5 @@
 package com.beigebigdata.pdf2htmlutil.service;
 
-import java.util.Date;
 
 /**
  * @author lin.tb lin.maple.leaf@gmail.com
@@ -11,4 +10,6 @@ import java.util.Date;
 public interface UpdateService {
 
     void updateHtmlContent(long orig_id, String cont_html);
+
+    void convertFail(long orig_id);
 }

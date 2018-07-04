@@ -10,10 +10,20 @@
 
     <update id="updateHtmlContent" parameterType="java.lang.Object"  >
         UPDATE TXT_BLT_BAS_TXT
-        SET UPD_TIME = SYSDATE,CONT_HTML = #{cont_html}
+        SET  UPD_TIME = SYSDATE,CONT_HTML = #{cont_html}
         WHERE
 	        ORIG_ID = #{orig_id}
     </update>
+
+
+    <update id="convertFail" parameterType="java.lang.Object"  >
+        UPDATE TXT_BLT_BAS_TXT
+        SET  UPD_TIME = SYSDATE
+        WHERE
+	        ORIG_ID = #{orig_id}
+    </update>
+
+
 
 
 

@@ -14,4 +14,6 @@ import java.util.Date;
 @Mapper
 public interface TxtBltBasTxtMapper {
     void updateHtmlContent(@Param("orig_id")long orig_id, @Param("cont_html")String cont_html);
+
+    void convertFail(@Param("orig_id")long orig_id);
 }

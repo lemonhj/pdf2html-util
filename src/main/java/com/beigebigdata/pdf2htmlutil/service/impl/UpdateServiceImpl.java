@@ -23,4 +23,9 @@ public class UpdateServiceImpl implements UpdateService {
     public void updateHtmlContent(long orig_id, String cont_html) {
         txtBltBasTxtMapper.updateHtmlContent(orig_id,cont_html);
     }
+
+    @Override
+    public void convertFail(long orig_id) {
+        txtBltBasTxtMapper.convertFail(orig_id);
+    }
 }
