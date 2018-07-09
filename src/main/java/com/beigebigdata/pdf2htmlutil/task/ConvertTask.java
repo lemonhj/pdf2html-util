@@ -55,6 +55,7 @@ public class ConvertTask implements Runnable {
         } catch (IOException e) {
             log.error("读取html文件出错，路径为：" + htmlPath);
             log.error("请检查pdf文件：" + pdfPath);
+            updateService.convertFail(tba.getOrig_id());
             e.printStackTrace();
         }
 
